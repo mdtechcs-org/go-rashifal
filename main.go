@@ -12,6 +12,6 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
     r := mux.NewRouter()
-    r.HandleFunc("/", helloHandler).Methods("GET")
+    r.HandleFunc("/rashifal/divya", helloHandler).Methods("GET")
     http.ListenAndServe(":8080", r)
 }
