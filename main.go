@@ -1,12 +1,14 @@
 package main
 
 import (
-	"encoding/xml"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
-	"net/http"
-	"io/ioutil"
 	"github.com/gorilla/mux"
+	"io/ioutil"
+	"net/http"
+	"strings"
+	"time"
 )
 
 // Define structs based on the RSS XML structure
@@ -20,11 +22,15 @@ type Channel struct {
 	Items       []Item `xml:"item"`
 }
 
+type APIResponse struct {
+	Horoscope *Item `json:"horoscope"`
+	Panchang  *Item `json:"panchang"`
+}
+
 type Item struct {
 	Title       string `xml:"title"`
 	Link        string `xml:"link"`
 	Description string `xml:"description"`
-    
 }
 
 func fetchRSSFeed(url string) (RSS, error) {
@@ -52,10 +58,38 @@ func fetchRSSFeed(url string) (RSS, error) {
 	return rss, nil
 }
 
+func findTodayHoroscope(items []Item) *Item {
+	todayDate := time.Now().Format("02-January-2006")
+	todayDate = strings.ToLower(todayDate) // Format today's date as "11-July-2024"
+	fmt.Println(todayDate)
+
+	for _, item := range items {
+		compareLink := strings.ToLower(item.Link)
+		if strings.Contains(compareLink, "horoscope") && strings.Contains(compareLink, todayDate) {
+			return &item
+		}
+	}
+	return nil
+}
+
+func findTodayPanchang(items []Item) *Item {
+	todayDate := time.Now().Format("02-January-2006")
+	todayDate = strings.ToLower(todayDate) // Format today's date as "11-July-2024"
+	fmt.Println(todayDate)
+
+	for _, item := range items {
+		compareLink := strings.ToLower(item.Link)
+		if strings.Contains(compareLink, "panchang") && strings.Contains(compareLink, todayDate) {
+			return &item
+		}
+	}
+	return nil
+}
+
 func rashifalHandler(w http.ResponseWriter, r *http.Request) {
 	// URL of the RSS feed
 	url := "https://www.gujaratsamachar.com/rss/category/astro"
-    fmt.Println("Project started...rashifalHandler")
+	fmt.Println("Project started...rashifalHandler")
 
 	// Fetch the RSS feed data
 	rss, err := fetchRSSFeed(url)
@@ -80,12 +114,18 @@ func rashifalHandler(w http.ResponseWriter, r *http.Request) {
 	// Encode JSON response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response.Items)
+	horoscope := findTodayHoroscope(response.Items)
+	panchang := findTodayPanchang(response.Items)
+	jsonResponse := APIResponse{
+		Horoscope: horoscope,
+		Panchang:  panchang,
+	}
+	json.NewEncoder(w).Encode(jsonResponse)
 }
 
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/rashifal/divya", rashifalHandler).Methods("GET")
 	http.ListenAndServe(":8080", r)
-    fmt.Println("Project started...")
+	fmt.Println("Project started...")
 }
